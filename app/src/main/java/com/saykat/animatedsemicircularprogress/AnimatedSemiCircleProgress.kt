@@ -176,7 +176,7 @@ private fun ProgressCircle(
     strokePx: Float
 ) {
     Box(
-        modifier = Modifier.size(360.dp),
+        modifier = Modifier.size(320.dp),
         contentAlignment = Alignment.Center
     ) {
         // Canvas for drawing the progress arc and labels
@@ -346,7 +346,7 @@ private fun CenterContent(
     colorStops: List<Pair<Float, Color>>
 ) {
     Box(
-        modifier = Modifier.size(280.dp),
+        modifier = Modifier.size(240.dp),
         contentAlignment = Alignment.Center
     ) {
         // Animated gradient background
