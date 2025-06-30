@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
@@ -53,12 +54,18 @@ import androidx.core.graphics.withSave
 import kotlin.math.cos
 import kotlin.math.sin
 
+/**
+ * Data class representing a label specification for the semi-circle progress
+ */
 data class LabelSpec(
     val text: String,
     val angle: Float,
     val range: ClosedFloatingPointRange<Float>
 )
 
+/**
+ * Predefined labels for different progress ranges
+ */
 val labels = listOf(
     LabelSpec("OFF TRACK", -200f, 0f..20f),
     LabelSpec("IMPROVING", -140f, 21f..40f),
@@ -67,9 +74,21 @@ val labels = listOf(
     LabelSpec("SUPERB", 20f, 81f..100f)
 )
 
-
+/**
+ * Animated Semi-Circle Progress Component
+ * 
+ * A beautiful, animated semi-circular progress indicator with:
+ * - Smooth progress animation
+ * - Dynamic gradient background
+ * - Interactive label highlighting
+ * - Clickable progress buttons for testing
+ * 
+ * @param progress Initial progress value (0-100)
+ */
 @Composable
 fun AnimatedSemiCircleProgress(progress: Int = 95) {
+
+    // Infinite animation for gradient background movement
     val infiniteTransition = rememberInfiniteTransition()
     val targetOffset = with(LocalDensity.current) {
         1000.dp.toPx()
@@ -82,21 +101,26 @@ fun AnimatedSemiCircleProgress(progress: Int = 95) {
             repeatMode = RepeatMode.Reverse
         )
     )
+    
+    // Current progress state with bounds checking
     var updatedProgress by remember { mutableFloatStateOf(progress.toFloat()) }
     LaunchedEffect(updatedProgress) {
         updatedProgress = updatedProgress.coerceIn(0f, 100f)
     }
 
+    // Convert progress to arc sweep angle (280° total sweep)
     var localProgress by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(updatedProgress) {
         localProgress = (280f * updatedProgress / 100).toFloat()
     }
 
+    // Animated progress with smooth transition
     val animatedProgress by animateFloatAsState(
         targetValue = localProgress,
         animationSpec = tween(3000)
     )
 
+    // Gradient colors for background animation
     val colorStops = listOf(
         0.00f to Color(0xEF74A9E9),
         0.35f to Color(0xDDFEEDF5),
@@ -105,16 +129,16 @@ fun AnimatedSemiCircleProgress(progress: Int = 95) {
         0.85f to Color(0xFF9AC7FF),
     )
 
+    // Arc styling
     val strokeWidth = 28.dp
     val strokePx = with(LocalDensity.current) { strokeWidth.toPx() }
     val textPadding = with(LocalDensity.current) { 24.dp.toPx() }
-
+    
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
-
         ) {
             Box(
                 modifier = Modifier
@@ -122,265 +146,292 @@ fun AnimatedSemiCircleProgress(progress: Int = 95) {
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier.size(350.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Canvas(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(strokeWidth / 2)
-                    ) {
-                        val startAngle = -230f
-                        val sweepAngle = 280f
-
-                        val arcRadius = (size.minDimension - strokePx) / 2
-                        val center = Offset(size.width / 2, size.height / 2)
-
-                        fun drawLabel(
-                            text: String,
-                            angleDeg: Float,
-                            radius: Float,
-                            color: Color = Color.Gray,
-                            size: Float = 32f,
-                            bold: Boolean = false
-                        ) {
-                            val angleRad = Math.toRadians(angleDeg.toDouble())
-                            val x = center.x + radius * cos(angleRad).toFloat()
-                            val y = center.y + radius * sin(angleRad).toFloat()
-
-                            val paint = Paint().apply {
-                                this.color = color.toArgb()
-                                this.textSize = size
-                                this.textAlign = Paint.Align.CENTER
-                                this.isFakeBoldText = bold
-                            }
-
-                            drawContext.canvas.nativeCanvas.apply {
-                                withSave {
-                                    translate(x, y)
-                                    rotate(angleDeg + 90f)
-                                    drawText(text, 0f, 0f, paint)
-                                }
-                            }
-                        }
-
-                        val labelRadius = arcRadius + strokePx / 2 + textPadding
-                        labels.forEach { label ->
-                            drawLabel(
-                                label.text,
-                                label.angle,
-                                labelRadius,
-                                color = if (updatedProgress.toFloat() in label.range) Color.Black else Color.LightGray,
-                                size = 36f,
-                                bold = updatedProgress.toFloat() in label.range
-                            )
-                        }
-
-                        drawArc(
-                            color = Color(0xFFF3F4F6),
-                            startAngle = startAngle,
-                            sweepAngle = sweepAngle,
-                            useCenter = false,
-                            style = Stroke(width = strokePx, cap = StrokeCap.Round)
-                        )
-
-                        drawArc(
-                            color = Color(0xFF5F71FD),
-                            startAngle = startAngle,
-                            sweepAngle = (animatedProgress),
-                            useCenter = false,
-                            style = Stroke(width = strokePx, cap = StrokeCap.Round)
-                        )
-
-                        val angleRad = Math.toRadians((startAngle + sweepAngle * .92f).toDouble())
-                        val arcEnd = Offset(
-                            x = center.x + arcRadius * cos(angleRad).toFloat(),
-                            y = center.y + arcRadius * sin(angleRad).toFloat()
-                        )
-
-                        val lineLength = (strokeWidth).toPx() + 10
-                        val lineWidth = lineLength / 4
-
-                        val lineStart = Offset(
-                            x = arcEnd.x + (lineLength - 2 * lineWidth) - lineLength / 2,
-                            y = arcEnd.y
-                        )
-                        val lineEnd = Offset(
-                            x = arcEnd.x + (lineLength - 2 * lineWidth) + lineLength / 2,
-                            y = arcEnd.y
-                        )
-
-                        drawLine(
-                            color = Color.White,
-                            start = lineStart,
-                            end = lineEnd,
-                            strokeWidth = 2 * lineWidth,
-                            cap = StrokeCap.Round
-                        )
-
-                        drawLine(
-                            color = Color(0xFF33CC66),
-                            start = lineStart,
-                            end = lineEnd,
-                            strokeWidth = lineWidth,
-                            cap = StrokeCap.Round
-                        )
-                    }
-                    Box(
-                        modifier = Modifier.size(280.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .clip(shape = CircleShape)
-                                .blur(20.dp)
-                                .drawWithCache {
-                                    val brushSize = 400f
-                                    val brush = Brush.radialGradient(
-                                        colorStops = colorStops.toTypedArray(),
-                                        center = Offset(offset.value, offset.value),
-                                        radius = brushSize,
-                                        tileMode = TileMode.Mirror
-                                    )
-
-                                    onDrawBehind {
-                                        drawRect(brush = brush)
-                                    }
-                                }
-                        )
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "${updatedProgress.toInt()}%",
-                                color = Color(0x99000000),
-                                fontSize = 46.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                            Text(
-                                text = "Completed",
-                                color = Color(0x99000000),
-                                fontSize = 26.sp
-                            )
-                        }
-                    }
-                }
+                ProgressCircle(
+                    updatedProgress = updatedProgress,
+                    animatedProgress = animatedProgress,
+                    offset = offset.value,
+                    colorStops = colorStops,
+                    strokeWidth = strokeWidth,
+                    strokePx = strokePx,
+                    textPadding = textPadding
+                )
             }
 
-            Row {
-
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Gray, shape = RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .clickable {
-                            updatedProgress = 20f
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "20%",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Gray, shape = RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .clickable {
-                            updatedProgress = 35f
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "35%",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Gray, shape = RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .clickable {
-                            updatedProgress = 55f
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "55%",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Gray, shape = RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .clickable {
-                            updatedProgress = 75f
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "75%",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color.Gray, shape = RoundedCornerShape(8.dp))
-                        .clip(RoundedCornerShape(8.dp))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .clickable {
-                            updatedProgress = 95f
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "95%",
-                        color = Color.White,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                }
+            // Control Buttons
+            ProgressControlButtons { newProgress ->
+                updatedProgress = newProgress
             }
-
-
         }
-
     }
 }
 
+/**
+ * Main progress circle component containing the arc, labels, and center display
+ */
+@Composable
+private fun ProgressCircle(
+    updatedProgress: Float,
+    animatedProgress: Float,
+    offset: Float,
+    colorStops: List<Pair<Float, Color>>,
+    strokeWidth: androidx.compose.ui.unit.Dp,
+    strokePx: Float,
+    textPadding: Float
+) {
+    Box(
+        modifier = Modifier.size(350.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Canvas for drawing the progress arc and labels
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(strokeWidth / 2)
+        ) {
+            val startAngle = -230f
+            val sweepAngle = 280f
+            val arcRadius = (size.minDimension - strokePx) / 2
+            val center = Offset(size.width / 2, size.height / 2)
+
+            // Draw progress labels around the arc
+            drawTextLabels(
+                center = center,
+                arcRadius = arcRadius,
+                strokePx = strokePx,
+                textPadding = textPadding,
+                currentProgress = updatedProgress
+            )
+
+            // Draw background arc (gray)
+            drawArc(
+                color = Color(0xFFF3F4F6),
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+
+            // Draw progress arc (blue)
+            drawArc(
+                color = Color(0xFF5F71FD),
+                startAngle = startAngle,
+                sweepAngle = animatedProgress,
+                useCenter = false,
+                style = Stroke(width = strokePx, cap = StrokeCap.Round)
+            )
+
+            // Draw end indicator line
+            drawEndIndicator(
+                center = center,
+                arcRadius = arcRadius,
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                strokeWidth = strokeWidth
+            )
+        }
+        
+        // Center content with animated background
+        CenterContent(
+            updatedProgress = updatedProgress,
+            offset = offset,
+            colorStops = colorStops
+        )
+    }
+}
+
+/**
+ * Draws the text labels around the arc
+ */
+private fun DrawScope.drawTextLabels(
+    center: Offset,
+    arcRadius: Float,
+    strokePx: Float,
+    textPadding: Float,
+    currentProgress: Float
+) {
+    fun drawLabel(
+        text: String,
+        angleDeg: Float,
+        radius: Float,
+        color: Color = Color.Gray,
+        size: Float = 32f,
+        bold: Boolean = false
+    ) {
+        val angleRad = Math.toRadians(angleDeg.toDouble())
+        val x = center.x + radius * cos(angleRad).toFloat()
+        val y = center.y + radius * sin(angleRad).toFloat()
+
+        val paint = Paint().apply {
+            this.color = color.toArgb()
+            this.textSize = size
+            this.textAlign = Paint.Align.CENTER
+            this.isFakeBoldText = bold
+        }
+
+        drawContext.canvas.nativeCanvas.apply {
+            withSave {
+                translate(x, y)
+                rotate(angleDeg + 90f)
+                drawText(text, 0f, 0f, paint)
+            }
+        }
+    }
+
+    val labelRadius = arcRadius + strokePx / 2 + textPadding
+    labels.forEach { label ->
+        val isActive = currentProgress in label.range
+        drawLabel(
+            text = label.text,
+            angleDeg = label.angle,
+            radius = labelRadius,
+            color = if (isActive) Color.Black else Color.LightGray,
+            size = 36f,
+            bold = isActive
+        )
+    }
+}
+
+/**
+ * Draws the end indicator line at the arc end
+ */
+private fun DrawScope.drawEndIndicator(
+    center: Offset,
+    arcRadius: Float,
+    startAngle: Float,
+    sweepAngle: Float,
+    strokeWidth: androidx.compose.ui.unit.Dp
+) {
+    val angleRad = Math.toRadians((startAngle + sweepAngle * .90f).toDouble())
+    val arcEnd = Offset(
+        x = center.x + arcRadius * cos(angleRad).toFloat(),
+        y = center.y + arcRadius * sin(angleRad).toFloat()
+    )
+
+    val lineLength = strokeWidth.toPx() + 10
+    val lineWidth = lineLength / 4
+    val adjustLength = (lineLength - 2 * lineWidth)
+
+    val lineStart = Offset(
+        x = arcEnd.x + adjustLength - lineLength / 2,
+        y = arcEnd.y
+    )
+    val lineEnd = Offset(
+        x = arcEnd.x + adjustLength + lineLength / 2,
+        y = arcEnd.y
+    )
+
+    // Draw white outline
+    drawLine(
+        color = Color.White,
+        start = lineStart,
+        end = lineEnd,
+        strokeWidth = 2 * lineWidth,
+        cap = StrokeCap.Round
+    )
+
+    // Draw green center line
+    drawLine(
+        color = Color(0xFF33CC66),
+        start = lineStart,
+        end = lineEnd,
+        strokeWidth = lineWidth,
+        cap = StrokeCap.Round
+    )
+}
+
+/**
+ * Center content with animated gradient background and progress text
+ */
+@Composable
+private fun CenterContent(
+    updatedProgress: Float,
+    offset: Float,
+    colorStops: List<Pair<Float, Color>>
+) {
+    Box(
+        modifier = Modifier.size(280.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // Animated gradient background
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(shape = CircleShape)
+                .blur(20.dp)
+                .drawWithCache {
+                    val brushSize = 400f
+                    val brush = Brush.radialGradient(
+                        colorStops = colorStops.toTypedArray(),
+                        center = Offset(offset, offset),
+                        radius = brushSize,
+                        tileMode = TileMode.Mirror
+                    )
+
+                    onDrawBehind {
+                        drawRect(brush = brush)
+                    }
+                }
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "${updatedProgress.toInt()}%",
+                color = Color(0x99000000),
+                fontSize = 46.sp,
+                fontWeight = FontWeight.ExtraBold
+            )
+            Text(
+                text = "Completed",
+                color = Color(0x99000000),
+                fontSize = 26.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressControlButtons(
+    onProgressChange: (Float) -> Unit
+) {
+    val progressValues = listOf(20f, 35f, 55f, 75f, 95f)
+    
+    Row {
+        progressValues.forEachIndexed { index, progressValue ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.width(16.dp))
+            }
+            
+            ProgressButton(
+                progress = progressValue,
+                onClick = { onProgressChange(progressValue) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProgressButton(
+    progress: Float,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(50.dp)
+            .background(Color.Gray, shape = RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "${progress.toInt()}%",
+            color = Color.White,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
+    }
+}
 
 @Composable
 @Preview(showBackground = true)
