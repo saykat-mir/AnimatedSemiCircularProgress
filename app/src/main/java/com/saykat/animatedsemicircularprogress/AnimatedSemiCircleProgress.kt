@@ -132,7 +132,6 @@ fun AnimatedSemiCircleProgress(progress: Int = 95) {
     // Arc styling
     val strokeWidth = 28.dp
     val strokePx = with(LocalDensity.current) { strokeWidth.toPx() }
-    val textPadding = with(LocalDensity.current) { 24.dp.toPx() }
     
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -152,8 +151,7 @@ fun AnimatedSemiCircleProgress(progress: Int = 95) {
                     offset = offset.value,
                     colorStops = colorStops,
                     strokeWidth = strokeWidth,
-                    strokePx = strokePx,
-                    textPadding = textPadding
+                    strokePx = strokePx
                 )
             }
 
@@ -175,11 +173,10 @@ private fun ProgressCircle(
     offset: Float,
     colorStops: List<Pair<Float, Color>>,
     strokeWidth: androidx.compose.ui.unit.Dp,
-    strokePx: Float,
-    textPadding: Float
+    strokePx: Float
 ) {
     Box(
-        modifier = Modifier.size(350.dp),
+        modifier = Modifier.size(360.dp),
         contentAlignment = Alignment.Center
     ) {
         // Canvas for drawing the progress arc and labels
@@ -198,7 +195,7 @@ private fun ProgressCircle(
                 center = center,
                 arcRadius = arcRadius,
                 strokePx = strokePx,
-                textPadding = textPadding,
+                textPadding = strokePx,
                 currentProgress = updatedProgress
             )
 
@@ -307,16 +304,16 @@ private fun DrawScope.drawEndIndicator(
         y = center.y + arcRadius * sin(angleRad).toFloat()
     )
 
-    val lineLength = strokeWidth.toPx() + 10
+    val lineLength = strokeWidth.toPx()
     val lineWidth = lineLength / 4
     val adjustLength = (lineLength - 2 * lineWidth)
 
     val lineStart = Offset(
-        x = arcEnd.x + adjustLength - lineLength / 2,
+        x = arcEnd.x + adjustLength - lineLength / 2 - adjustLength / 4,
         y = arcEnd.y
     )
     val lineEnd = Offset(
-        x = arcEnd.x + adjustLength + lineLength / 2,
+        x = arcEnd.x + adjustLength + lineLength / 2 + adjustLength / 4,
         y = arcEnd.y
     )
 
